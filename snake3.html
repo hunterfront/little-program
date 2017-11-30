@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>贪吃蛇 v2.0</title>
+  <style>
+    /*初始化样式*/
+    button {
+      padding: 0;
+      border: none
+    }
+
+    h2 {
+      text-align: center;
+    }
+
+    h2 span {
+      display: inline-block;
+      color: white;
+      background-color: #25AE88;
+      line-height: 2em;
+      padding:0 .5em;
+      border-radius: .5em;
+    }
+
+    .gamePanel {
+      border-collapse: collapse;
+      margin: 0 auto;
+      border: 1px solid #bbb;
+    }
+
+    .gamePanel td {
+      width: 12px;
+      height: 12px;
+      border: 1px solid #bbb;
+      box-sizing: border-box;
+    }
+
+    .gamePanel.active td {
+      border: none;
+    }
+
+    .btnGroup {
+      margin-top: 10px;
+      text-align: center;
+    }
+
+    .btn {
+      line-height: 2em;
+      padding: 0 1em;
+      border-radius: 4px;
+      color: white;
+    }
+
+    .btn.start {
+      background-color: #25AE88;
+    }
+
+    .btn.pause {
+      background-color: #F05E1C;
+    }
+
+    .btn.restart {
+      background-color: #4FCBF0;
+    }
+
+    .btn.line {
+      background-color: #777;
+    }
+
+    .gameInfoBox {
+      margin-top: 10px;
+      color: #333333;
+    }
+
+    .gameInfoBox > div {
+      width: 240px;
+      margin: 0 auto;
+      overflow: hidden;
+    }
+
+    .lvWrap {
+      float: left;
+    }
+
+    .scoreWrap {
+      float: right;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(50, 50, 50, .8);
+    }
+
+    .modal.active { /*提示框*/
+      display: block;
+    }
+
+    .alertInfo {
+      position: absolute;
+      width: 300px;
+      height: 200px;
+      background-color: #25AE88;
+      border-radius: 10px;
+      left: 50%;
+      top: 50%;
+      margin: -100px 0 0 -150px;
+      text-align: center;
+    }
+
+    .alertInfo h1 {
+      margin: 1em 0 .5em;
+    }
+
+    .conformBtn {
+      padding: .5em 1em;
+      border-radius: .5em;
+      color: white;
+      background-color: #777777;
+    }
+    .tip{
+      text-align: center
+    }
+  </style>
+</head>
+<body>
+<h2><span>Snake Game</span></h2>
+<table class="gamePanel active" id="gamePanel"></table>
+<div class="gameInfoBox">
+  <div>
+    <div class="lvWrap">
+      <b>关卡：</b><span id="lv">1</span>
+    </div>
+    <div class="scoreWrap">
+      <b>分数：</b><span id="score">0</span>
+    </div>
+  </div>
+</div>
+<div class="btnGroup">
+  <button class="start btn" id="startBtn">开始</button>
+  <button class="pause btn" id="pauseBtn">暂停</button>
+  <button class="restart btn" id="restartBtn">重新开始</button>
+  <button class="line btn" id="lineBtn">显示/隐藏参考线</button>
+</div>
+<p class="tip">上、下、左、右键控制方向</p>
+<div class="modal" id="modal">
+  <div class="alertInfo">
+    <h1>GAME OVER!</h1>
+    <p>通关：<span id="lastLv"></span>&nbsp;&nbsp;分数：<span id="lastScore"></span></p>
+    <button class="conformBtn" id="conformBtn">确定</button>
+  </div>
+</div>
+<script>
+  //定义全局函数用于查找元素
+  function $(id) {
+    return document.getElementById(id)
+  }
+  //snakeGame
+  var snakeGame = {
+    tbl: null,//蛇的移动平台
+    body: [],//蛇身
+    X: 9, Y: 9,//蛇头的横纵坐标
+    direction: 0,//蛇移动的方向 0:上，1：右，2：下，3：左
+    PSiZE: 20,//边的格子数
+    timer: null,//计数器
+    speed: 200,//时间间隔（速度）
+    state: null,//记录游戏的状态
+    OVER: 0,//游戏结束
+    RUNNING: 1,//游戏运行中
+    PAUSE: 2,//游戏暂停
+    score: 0,//游戏得分
+    level: 1,//游戏关卡
+    init: function () {
+      this.state = this.PAUSE;
+      this.tbl = $('gamePanel');
+      this.createGamePanel(this.tbl);//js动态生成游戏界面格子20*20
+      this.body = [
+        {x: this.X, y: this.Y},//蛇头
+        {x: this.X + 1, y: this.Y},
+        {x: this.X + 2, y: this.Y}
+      ];
+      this.paint(this.body);//对蛇进行初始化
+      var fruits = this.PSiZE * 0.5;
+      for (var i = 0; i < fruits; i++) {//初始化'边长*0.5'个数个果实
+        this.createFruit();
+      }
+      this.direction = 3;//初始移动方向向左
+      window.onkeydown = function (e) {//控制蛇的方向：0:上，1：右，2：下，3：左
+        switch (e.keyCode) {
+          case 37:
+            if (this.direction === 1) {
+              return;//控制其不能回头
+            }
+            this.direction = 3;
+            break;
+          case 38:
+            if (this.direction === 2) {
+              return;
+            }
+            this.direction = 0;
+            break;
+          case 39:
+            if (this.direction === 3) {
+              return;
+            }
+            this.direction = 1;
+            break;
+          case 40:
+            if (this.direction === 0) {
+              return;
+            }
+            this.direction = 2;
+        }
+      }.bind(this);
+      $('startBtn').onclick = function () {//开始游戏
+        if (this.state === this.PAUSE) {
+          this.timer = setInterval(this.move.bind(this), this.speed);
+          this.state = this.RUNNING;
+        }
+      }.bind(this);
+      $('pauseBtn').onclick = function () {//暂停游戏
+        if (this.state === this.RUNNING) {
+          clearInterval(this.timer);
+          this.state = this.PAUSE;
+        }
+      }.bind(this);
+      $('restartBtn').onclick = function () {//重新开始
+        location.reload();
+      };
+      $('lineBtn').onclick = function () { //显示隐藏参考线
+        if (this.tbl.className === 'gamePanel') {
+          this.tbl.className = 'gamePanel active';
+        } else {
+          this.tbl.className = 'gamePanel';
+        }
+      }.bind(this);
+      $('conformBtn').onclick = function () {
+        $('modal').className = 'modal';
+      }
+    },
+    createGamePanel: function (tbl) {//初始化游戏界面
+      var frag = document.createDocumentFragment();
+      for (var r = 0; r < this.PSiZE; r++) {
+        var row = document.createElement('tr');
+        for (var c = 0; c < this.PSiZE; c++) {
+          var cell = document.createElement('td');
+          row.appendChild(cell);
+        }
+        frag.appendChild(row);
+      }
+      tbl.appendChild(frag);
+    },
+    createFruit: function () {//初始化果实
+      while (true) {
+        var y = Math.floor(Math.random() * this.PSiZE);
+        var x = Math.floor(Math.random() * this.PSiZE);
+        if (!this.isCellFilled(x, y)) {
+          this.tbl.rows[y].cells[x].style.backgroundColor = '#11aaaa';
+          break;
+        }
+      }
+    },
+    move: function () {
+      this.erase(this.body);//擦除
+      var r = this.moveOneStep();//计算的位置,有返回值，重绘后添加一个果实
+      this.paint(this.body);//重绘
+      if (r === 1) {
+        this.createFruit()
+      }//重绘后添加果实，以免被重绘蛇体覆盖
+    },
+    moveOneStep: function () {//蛇的移动
+      var nextPos = this.getNextPos(this.body[0].x, this.body[0].y);
+      var r = this.checkNextPoint(nextPos);
+      if (r === -1) {
+        this.state = this.OVER;
+        $('modal').className = 'modal active';
+        $('lastScore').innerHTML = this.score;
+        $('lastLv').innerHTML = this.level;
+        clearInterval(this.timer);
+      } else if (r === 1) {
+        this.body.unshift(nextPos);
+        this.setLvScore();
+        return 1;
+      } else {
+        this.body.pop();
+        this.body.unshift(nextPos);
+      }
+    },
+    checkNextPoint: function (nextPos) {
+      var x = nextPos.x;
+      var y = nextPos.y;
+      if (x >= this.PSiZE || y >= this.PSiZE || x < 0 || y < 0) {//超出边界
+        return -1;
+      }
+      for (var i = 0; i < this.body.length; i++) {//咬到自己尾巴
+        var b = this.body[i];
+        if (b.x === x && b.y === y) {
+          return -1;
+        }
+      }
+      if (this.isCellFilled(x, y)) {//吃到果实
+        return 1;
+      }
+      return 0;
+    },
+    erase: function (body) {//擦除蛇
+      for (var i = 0; i < body.length; i++) {
+        var b = body[i];
+        var x = b.x, y = b.y;
+        this.tbl.rows[y].cells[x].style.backgroundColor = '';
+      }
+    },
+    paint: function (body) {//绘制蛇
+      for (var i = 0; i < body.length; i++) {
+        var b = body[i];
+        var x = b.x, y = b.y;
+        if (i === 0) {
+          this.tbl.rows[y].cells[x].style.backgroundColor = 'red';
+        } else {
+          this.tbl.rows[y].cells[x].style.backgroundColor = 'yellow';
+        }
+      }
+    },
+    getNextPos: function (x, y) {//获得蛇头的下一个位置,xy表示蛇头当前的位置
+      if (this.direction === 0) {
+        y--;
+      } else if (this.direction === 1) {
+        x++;
+      } else if (this.direction === 2) {
+        y++;
+      } else if (this.direction === 3) {
+        x--;
+      }
+      return {x: x, y: y}
+    },
+    isCellFilled: function (x, y) {
+      if (!this.tbl.rows[y].cells[x].style.backgroundColor) {
+        return false;
+      }
+      return true;
+    },
+    setLvScore: function () {
+      this.score += 1;
+      if (this.score % 10 === 0) {
+        this.speed *= 0.8;
+        this.level += 1;
+        clearInterval(this.timer);
+        this.timer = setInterval(this.move.bind(this), this.speed);//升级加速
+      }
+      $('lv').innerHTML = this.level;
+      $('score').innerHTML = this.score;
+    }
+  };
+  snakeGame.init();
+</script>
+</body>
+</html>
