@@ -4,6 +4,7 @@
 
 http://hunterfront.github.io/little-program/beatmole  
 参考原型图：  
+
 ![](https://github.com/HunterFront/little-program/images/game1.png)
 
 2、原生js实现贪吃蛇游戏  
