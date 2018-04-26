@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0,maximum-scale=1.0,minimum-scale=1.0,user-scalable=no">
   <title>贪吃蛇 v2.0</title>
   <style>
     /*初始化样式*/
@@ -176,6 +178,7 @@
     score: 0,//游戏得分
     level: 1,//游戏关卡
     init: function () {
+      var me = this;
       this.state = this.PAUSE;
       this.tbl = $('gamePanel');
       this.createGamePanel(this.tbl);//js动态生成游戏界面格子20*20
@@ -190,6 +193,47 @@
         this.createFruit();
       }
       this.direction = 3;//初始移动方向向左
+      // 移动端事件
+      (function () {
+        let startX, startY , endX ,endY, X, Y, x ,y
+        window.addEventListener('touchstart', (e) => {
+          x = y = X = Y = null
+          startX = e.touches[0].screenX
+          startY = e.touches[0].screenY
+        })
+        window.addEventListener('touchmove', (e) => {
+          endX = e.touches[0].screenX
+          endY = e.touches[0].screenY
+          x = endX - startX
+          y = endY - startY
+          X = Math.abs(x)
+          Y = Math.abs(y)
+        })
+        window.addEventListener('touchend', (e) => {
+          if (X - Y > 0 && x > 0) {
+            if (me.direction === 3) {
+              return;
+            }
+            me.direction = 1;
+          } else if (X - Y > 0 && x < 0 ) {
+            if (me.direction === 1) {
+              return;
+            }
+            me.direction = 3;
+          } else if (X - Y < 0 && y > 0) {
+            if (me.direction === 0) {
+              return;
+            }
+            me.direction = 2;
+          } else if (X - Y < 0 && y < 0) {
+            if (me.direction === 2) {
+              return;
+            }
+            me.direction = 0;
+          }
+        })
+      })()
+      //pc端事件
       window.onkeydown = function (e) {//控制蛇的方向：0:上，1：右，2：下，3：左
         switch (e.keyCode) {
           case 37:
